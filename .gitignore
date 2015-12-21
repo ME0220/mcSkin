@@ -4,7 +4,6 @@
 
 # Data folder
 Data/Config.php
-Data/
 !Data/Resource/.gitkeep
 !Data/Template/.gitkeep
 

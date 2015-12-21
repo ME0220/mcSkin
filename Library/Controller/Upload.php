@@ -22,7 +22,7 @@ class Upload {
         $file = $_FILES['Steve'];
 
         if (!is_dir($this->upload_dir)) mkdir($this->upload_dir, 0777); //上传目录不存在则创建
-        if ($file['error'] == 1 || $file['size'] > ($this->file_size * 1024)) exit('1'); //上传失败，图片不能大于 $this->file_size k！
+        if ($file['error'] == 1 || $file['size'] > ($this->file_size * 1024)) $result['message'] = "你丫的文件别上传那么大，最多" . ($this->file_size * 1024); //上传失败，图片不能大于 $this->file_size k！
         switch ($file['error']) {
             case 3:
                 $result['message'] = "皮肤上传不完整，请重新上传"; //图片只有部分文件被上传，请重新上传！
