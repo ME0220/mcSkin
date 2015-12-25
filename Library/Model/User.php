@@ -8,9 +8,9 @@ namespace Model;
 
 use Core\Database;
 use Helper\Encrypt;
+use Helper\McHelper;
 
-class User
-{
+class User {
     const ENCRYPT_TYPE_DEFAULT = 0;
     const ENCRYPT_TYPE_ENHANCE = 1;
 
@@ -25,15 +25,14 @@ class User
     public $world;
     public $email;
     public $isLogged;
-    
+
     private static $instance;
 
     /**
      * Get current user object
      * @return User
      */
-    public static function getInstance()
-    {
+    public static function getInstance() {
         if (!self::$instance) {
             self::$instance = new self();
         }
@@ -41,8 +40,7 @@ class User
         return self::$instance;
     }
 
-    public function __construct()
-    {
+    public function __construct() {
         $cookie = Encrypt::decode($_COOKIE['auth'], COOKIE_KEY);
         if ($cookie) {
             list($this->id, $this->email, $this->username) = explode("\t", $cookie);
@@ -54,8 +52,7 @@ class User
      * @param $email string Email address
      * @return User
      */
-    public static function GetUserByEmail($email)
-    {
+    public static function GetUserByEmail($email) {
         $statement = Database::prepare("SELECT * FROM authme WHERE email=?");
         $statement->bindValue(1, $email);
         $statement->execute();
@@ -68,8 +65,7 @@ class User
      * @param $userId int UserID
      * @return User
      */
-    public static function GetUserByUserId($userId)
-    {
+    public static function GetUserByUserId($userId) {
         $statement = Database::prepare("SELECT * FROM authme WHERE id=?");
         $statement->bindValue(1, $userId, \PDO::PARAM_INT);
         $statement->execute();
@@ -82,20 +78,24 @@ class User
      * @param $userId int UserName
      * @return User
      */
-    public static function GetUserByUserName($username)
-    {
+    public static function GetUserByUserName($username) {
         $statement = Database::prepare("SELECT * FROM authme WHERE username=?");
         $statement->bindValue(1, $username, \PDO::PARAM_STR);
         $statement->execute();
         $statement->setFetchMode(\PDO::FETCH_CLASS, '\\Model\\User');
         return $statement->fetch(\PDO::FETCH_CLASS);
     }
+
+
+    public static function GetCharacter() {
+
+    }
+
     /**
      * Insert current user into database
      * @return int Auto-generated UserID for this user
      */
-    public function insertToDB()
-    {
+    public function insertToDB() {
         $inTransaction = Database::inTransaction();
         if (!$inTransaction) {
             Database::beginTransaction();
@@ -117,11 +117,10 @@ class User
      * @param string $password Password needs to verify
      * @return bool Whether the password is correct
      */
-    public function verifyPassword($password)
-    {
+    public function verifyPassword($password) {
         $list = explode("\$", $this->password);
-        if(count($line) > 3 && $line[1] == 'SHA') {
-            if($this->password == McHelper::GetSaltedHash($passWord, $line[2])) {
+        if (count($list) > 3 && $list[1] == 'SHA') {
+            if ($this->password == McHelper::GetSaltedHash($password, $list[2])) {
                 return true;
             }
         }
@@ -132,15 +131,16 @@ class User
      * Save new password
      * @param string $password New password
      */
-    public function savePassword($password)
-    {
-        $salt = substr(md5($this->id . $this->email . ENCRYPT_KEY), 8, 16);
-        $this->password = substr(md5(md5($password) . $salt), 0, 30) . 'T' . self::ENCRYPT_TYPE_ENHANCE;
+    public function savePassword($password) {
+        $salt = substr(Encrypt::encode($password), 0, 16);
+        $pwd = McHelper::GetSaltedHash($password, $salt);
+        $this->password = "\$SHA\$" . $salt . "$" . $pwd;
+
         $inTransaction = Database::inTransaction();
         if (!$inTransaction) {
             Database::beginTransaction();
         }
-        $statement = Database::prepare("UPDATE member SET `password`=:pwd WHERE id=:userId");
+        $statement = Database::prepare("UPDATE authme SET `password`=:pwd WHERE id=:userId");
         $statement->bindValue(':pwd', $this->password, \PDO::PARAM_STR);
         $statement->bindValue(':userId', $this->id, \PDO::PARAM_INT);
         $statement->execute();
