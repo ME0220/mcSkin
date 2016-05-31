@@ -1,43 +1,42 @@
 <?php
 /**
- * Router
+ * KK-Framework
  * Author: kookxiang <r18@ikk.me>
  */
+
 namespace Core;
 
 class Router extends DefaultRouter
 {
-    
-    public function findController($requestPath, $subDir = '') {
-        list($controller, $method) = explode('/', $requestPath, 2);
 
-        $controller = ucfirst($controller);
-        
-        if(stristr($requestPath, "skin")) {
-            global $char;
-            $char = $method;
-            $method= 'Index';
+    function __construct()
+    {
+        if (!defined('KK_START')) {
+            define('KK_START', microtime(true));
         }
+    }
 
-        if (is_dir(LIBRARY_PATH . "Controller/{$subDir}{$controller}")) {
-            if (!$method) {
-                $method = 'Index';
-            }
-            $this->findController($method, $subDir . $controller . '/');
-        } elseif (file_exists(LIBRARY_PATH . "Controller/{$subDir}{$controller}.php")) {
-            if (!$method) {
-                $method = 'index';
-            } else {
-                $method = lcfirst($method);
-            }
-            $classname = str_replace('/', '\\', "Controller/{$subDir}{$controller}");
-
-            $controller = new $classname();
-
-            if (method_exists($controller, $method)) {
-                $controller->$method();
-                $this->foundController = true;
-            }
+    public function handleRequest()
+    {
+        $requestPath = Request::getRequestPath();
+        $requestPath = ltrim($requestPath, '/');
+        if(stripos($requestPath, 'skin/') !== false) {
+        	global $skin_user;
+        	$skin_user = $requestPath;
+        	$requestPath = 'Skin.json';
         }
+        if (!$requestPath) {
+            $requestPath = 'Index';
+        }
+        Filter::preRoute($requestPath);
+        $this->findController($requestPath);
+        if (!$this->foundController) {
+            throw new Error('The request URL is not exists', 404);
+        }
+    }
+
+    public static function execTime()
+    {
+        return round(microtime(true) - KK_START, 4);
     }
 }

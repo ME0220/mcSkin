@@ -2,17 +2,34 @@
 *.iml
 .idea/
 
-# Data folder
-Data/Config.php
-!Data/Resource/.gitkeep
-!Data/Template/.gitkeep
-
-# Composer package
-Package/
-
 # Phinx Database config file
 phinx.yml
-phinx.php
 
 # Deploy script
 deploy.sh
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# Dependency directory
+node_modules/**/*
+
+# Composer
+composer.phar
+Package/**/*
+!composer.lock
+
+# Data folder
+Data/**/*
+!Data/Config.simple.php
+
+# Front-end Resources (compiled)
+Public/**/*
+!Public/**/*.php

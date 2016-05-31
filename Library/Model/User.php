@@ -1,18 +1,20 @@
 <?php
 /**
- * KK Forum
- * A simple bulletin board system
+ * MineCraft Skin web server
+ * A simple minecraft character management system.
  * Author: kookxiang <r18@ikk.me>
  */
 namespace Model;
 
-use Core\Database;
-use Helper\Encrypt;
-use Helper\McHelper;
+use Core\Database as DB;
+use Core\Model;
 
-class User {
-    const ENCRYPT_TYPE_DEFAULT = 0;
-    const ENCRYPT_TYPE_ENHANCE = 1;
+/**
+ * Class User
+ * @table mc_user
+ * @package Model
+ */
+class User extends Model {
 
     public $id;
     public $username;
@@ -26,126 +28,45 @@ class User {
     public $email;
     public $isLogged;
 
-    private static $instance;
+    /** @ignore */
+    public $lastActive = TIMESTAMP;
 
     /**
-     * Get current user object
      * @return User
      */
-    public static function getInstance() {
-        if (!self::$instance) {
-            self::$instance = new self();
-        }
-
-        return self::$instance;
-    }
-
-    public function __construct() {
-        $cookie = Encrypt::decode($_COOKIE['auth'], COOKIE_KEY);
-        if ($cookie) {
-            list($this->id, $this->email, $this->username) = explode("\t", $cookie);
-        }
-    }
-
-    /**
-     * Get a user by email
-     * @param $email string Email address
-     * @return User
-     */
-    public static function GetUserByEmail($email) {
-        $statement = Database::prepare("SELECT * FROM authme WHERE email=?");
-        $statement->bindValue(1, $email);
-        $statement->execute();
-        $statement->setFetchMode(\PDO::FETCH_CLASS, '\\Model\\User');
-        return $statement->fetch(\PDO::FETCH_CLASS);
-    }
-
-    /**
-     * Get a user by UserId
-     * @param $userId int UserID
-     * @return User
-     */
-    public static function GetUserByUserId($userId) {
-        $statement = Database::prepare("SELECT * FROM authme WHERE id=?");
-        $statement->bindValue(1, $userId, \PDO::PARAM_INT);
-        $statement->execute();
-        $statement->setFetchMode(\PDO::FETCH_CLASS, '\\Model\\User');
-        return $statement->fetch(\PDO::FETCH_CLASS);
-    }
-
-    /**
-     * Get a user by UserName
-     * @param $userId int UserName
-     * @return User
-     */
-    public static function GetUserByUserName($username) {
-        $statement = Database::prepare("SELECT * FROM authme WHERE username=?");
-        $statement->bindValue(1, $username, \PDO::PARAM_STR);
-        $statement->execute();
-        $statement->setFetchMode(\PDO::FETCH_CLASS, '\\Model\\User');
-        return $statement->fetch(\PDO::FETCH_CLASS);
-    }
-
-
-    public static function GetCharacter() {
-
-    }
-
-    /**
-     * Insert current user into database
-     * @return int Auto-generated UserID for this user
-     */
-    public function insertToDB() {
-        $inTransaction = Database::inTransaction();
-        if (!$inTransaction) {
-            Database::beginTransaction();
-        }
-        $statement = Database::prepare("INSERT INTO authme SET email=:email, `password`=:pwd, username=:username");
-        $statement->bindValue(':email', $this->email, \PDO::PARAM_STR);
-        $statement->bindValue(':pwd', $this->password, \PDO::PARAM_STR);
-        $statement->bindValue(':username', $this->username, \PDO::PARAM_STR);
-        $statement->execute();
-        $this->id = Database::lastInsertId();
-        if (!$inTransaction) {
-            Database::commit();
-        }
-        return $this->id;
-    }
-
-    /**
-     * Verify whether the given password is correct
-     * @param string $password Password needs to verify
-     * @return bool Whether the password is correct
-     */
-    public function verifyPassword($password) {
-        $list = explode("\$", $this->password);
-        if (count($list) > 3 && $list[1] == 'SHA') {
-            if ($this->password == McHelper::GetSaltedHash($password, $list[2])) {
-                return true;
+    public static function getCurrent()
+    {
+        /** @var User $user */
+        $user = $_SESSION['currentUser'];
+        if ($user && TIMESTAMP - $user->lastActive > 600) {
+            $userObj = self::getUserById($user->id);
+            if (!$userObj) {
+                $user = null;
+            } elseif ($user->password != $userObj->password) {
+                // Password changed
+                $user = null;
+            } else {
+                $userObj->lastActive = TIMESTAMP;
+                $user = $userObj;
             }
         }
-        return false;
+        $_SESSION['currentUser'] = $user;
+        return $user;
     }
 
     /**
-     * Save new password
-     * @param string $password New password
+     * get user by id
+     * @param $id
+     * @return User
      */
-    public function savePassword($password) {
-        $salt = substr(Encrypt::encode($password), 0, 16);
-        $pwd = McHelper::GetSaltedHash($password, $salt);
-        $this->password = "\$SHA\$" . $salt . "$" . $pwd;
-
-        $inTransaction = Database::inTransaction();
-        if (!$inTransaction) {
-            Database::beginTransaction();
-        }
-        $statement = Database::prepare("UPDATE authme SET `password`=:pwd WHERE id=:userId");
-        $statement->bindValue(':pwd', $this->password, \PDO::PARAM_STR);
-        $statement->bindValue(':userId', $this->id, \PDO::PARAM_INT);
-        $statement->execute();
-        if (!$inTransaction) {
-            Database::commit();
-        }
+    public static function getUserById($id)
+    {
+        $stn = db::sql('SELECT * FROM mc_user WHERE id=?');
+        $stn->bindValue(1, $id, DB::PARAM_INT);
+        $stn->execute();
+        return $stn->fetchObject(__CLASS__);
     }
+
+    
+
 }
