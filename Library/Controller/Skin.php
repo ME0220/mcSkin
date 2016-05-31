@@ -24,8 +24,7 @@ class Skin
     private static function skinUser()
     {
         global $skin_user;
-        $skin_user = str_replace('skin/', '', $skin_user);
-        $skin_user = str_replace('.json', '', $skin_user);
+        $skin_user = str_replace(['skin/','.json'], '', $skin_user);
         return $skin_user;
     }
 }
